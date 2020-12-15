@@ -1,8 +1,6 @@
 import { WebXRButton } from './util/webxr-button.js';
 import { Scene } from './render/scenes/scene.js';
 import { Renderer, createWebGLContext } from './render/core/renderer.js';
-import { UrlTexture } from './render/core/texture.js';
-import { ButtonNode } from './render/nodes/button.js';
 import { Gltf2Node } from './render/nodes/gltf2.js';
 import { mat4, vec3 } from './render/math/gl-matrix.js';
 import { Ray } from './render/math/ray.js';
@@ -10,6 +8,7 @@ import { InlineViewerHelper } from './util/inline-viewer-helper.js';
 import { QueryArgs } from './util/query-args.js';
 import { EventBus } from "./primitive/eventbus.js";
 import * as DefaultSystemEvents from "./primitive/event.js";
+import { loadAudioSources, updateAudioSources, updateAudioNodes, stereo, resonance, audioSources } from './util/positional-audio.js'
 
 // If requested, use the polyfill to provide support for mobile devices
 // and devices which only support WebVR.
@@ -17,9 +16,6 @@ import WebXRPolyfill from './third-party/webxr-polyfill/build/webxr-polyfill.mod
 if (QueryArgs.getBool('usePolyfill', true)) {
     let polyfill = new WebXRPolyfill();
 }
-
-const DEFAULT_HEIGHT = 1.5;
-const ANALYSER_FFT_SIZE = 1024;
 
 // XR globals.
 let xrButton = null;
@@ -33,176 +29,7 @@ let scene = new Scene();
 scene.addNode(new Gltf2Node({ url: '../media/gltf/garage/garage.gltf' }));
 scene.standingStats(true);
 
-let playButton = null;
-let playTexture = new UrlTexture('../media/textures/play-button.png');
-let pauseTexture = new UrlTexture('../media/textures/pause-button.png');
-let stereo = new Gltf2Node({ url: '../media/gltf/stereo/stereo.gltf' });
-// FIXME: Temporary fix to initialize for cloning.
-stereo.visible = false;
 scene.addNode(stereo);
-
-// Audio scene globals
-let audioContext = new AudioContext();
-let resonance = new ResonanceAudio(audioContext);
-resonance.output.connect(audioContext.destination);
-
-audioContext.suspend();
-
-// TODO: This is crashing in recent versions of Resonance for me, and I'm
-// not sure why. It does run succesfully without it, though.
-// Rough room dimensions in meters (estimated from model in Blender.)
-/*let roomDimensions = {
-  width : 6,
-  height : 3,
-  depth : 6
-};
-
-// Simplified view of the materials that make up the scene.
-let roomMaterials = {
-  left : 'plywood-panel', // Garage walls
-  right : 'plywood-panel',
-  front : 'plywood-panel',
-  back : 'metal', // To account for the garage door
-  down : 'polished-concrete-or-tile', // garage floor
-  up : 'wood-ceiling'
-};
-resonance.setRoomProperties(roomDimensions, roomMaterials);*/
-
-function createAudioSource(options) {
-    // Create a Resonance source and set its position in space.
-    let source = resonance.createSource();
-    let pos = options.position;
-    source.setPosition(pos[0], pos[1], pos[2]);
-
-    // Connect an analyser. This is only for visualization of the audio, and
-    // in most cases you won't want it.
-    let analyser = audioContext.createAnalyser();
-    analyser.fftSize = ANALYSER_FFT_SIZE;
-    analyser.lastRMSdB = 0;
-
-    return fetch(options.url)
-        .then((response) => response.arrayBuffer())
-        .then((buffer) => audioContext.decodeAudioData(buffer))
-        .then((decodedBuffer) => {
-            let bufferSource = createBufferSource(
-                source, decodedBuffer, analyser);
-
-            return {
-                buffer: decodedBuffer,
-                bufferSource: bufferSource,
-                source: source,
-                analyser: analyser,
-                position: pos,
-                rotateY: options.rotateY,
-                node: null
-            };
-        });
-}
-
-function createBufferSource(source, buffer, analyser) {
-    // Create a buffer source. This will need to be recreated every time
-    // we wish to start the audio, see
-    // https://developer.mozilla.org/en-US/docs/Web/API/AudioBufferSourceNode
-    let bufferSource = audioContext.createBufferSource();
-    bufferSource.loop = true;
-    bufferSource.connect(source.input);
-
-    bufferSource.connect(analyser);
-
-    bufferSource.buffer = buffer;
-
-    return bufferSource;
-}
-
-/**
- * Returns a floating point value that represents the loudness of the audio
- * stream, appropriate for scaling an object with.
- * @return {Number} loudness scalar.
- */
-let fftBuffer = new Float32Array(ANALYSER_FFT_SIZE);
-function getLoudnessScale(analyser) {
-    analyser.getFloatTimeDomainData(fftBuffer);
-    let sum = 0;
-    for (let i = 0; i < fftBuffer.length; ++i)
-        sum += fftBuffer[i] * fftBuffer[i];
-
-    // Calculate RMS and convert it to DB for perceptual loudness.
-    let rms = Math.sqrt(sum / fftBuffer.length);
-    let db = 30 + 10 / Math.LN10 * Math.log(rms <= 0 ? 0.0001 : rms);
-
-    // Moving average with the alpha of 0.525. Experimentally determined.
-    analyser.lastRMSdB += 0.525 * ((db < 0 ? 0 : db) - analyser.lastRMSdB);
-
-    // Scaling by 1/30 is also experimentally determined. Max is to present
-    // objects from disappearing entirely.
-    return Math.max(0.3, analyser.lastRMSdB / 30.0);
-}
-
-let audioSources = [];
-
-function updateAudioNodes() {
-    if (!stereo)
-        return;
-
-    for (let source of audioSources) {
-        if (!source.node) {
-            source.node = stereo.clone();
-            source.node.visible = true;
-            source.node.selectable = true;
-            scene.addNode(source.node);
-        }
-
-        let node = source.node;
-        let matrix = node.matrix;
-
-        // Move the node to the right location.
-        mat4.identity(matrix);
-        mat4.translate(matrix, matrix, source.position);
-        mat4.rotateY(matrix, matrix, source.rotateY);
-
-        // Scale it based on loudness of the audio channel
-        let scale = getLoudnessScale(source.analyser);
-        mat4.scale(matrix, matrix, [scale, scale, scale]);
-    }
-}
-
-function playAudio() {
-    if (audioContext.state == 'running')
-        return;
-
-    audioContext.resume();
-
-    for (let source of audioSources) {
-        source.bufferSource.start(0);
-    }
-
-    if (playButton) {
-        playButton.iconTexture = pauseTexture;
-    }
-}
-
-function pauseAudio() {
-    if (audioContext.state == 'suspended')
-        return;
-
-    for (let source of audioSources) {
-        source.bufferSource.stop(0);
-        source.bufferSource = createBufferSource(
-            source.source, source.buffer, source.analyser);
-    }
-
-    audioContext.suspend();
-
-    if (playButton) {
-        playButton.iconTexture = playTexture;
-    }
-}
-
-window.addEventListener('blur', () => {
-    // As a general rule you should mute any sounds your page is playing
-    // whenever the page loses focus.
-    pauseAudio();
-});
 
 function initXR() {
     xrButton = new WebXRButton({
@@ -217,37 +44,7 @@ function initXR() {
         });
 
         // Load multiple audio sources.
-        Promise.all([
-            createAudioSource({
-                url: 'media/sound/guitar.ogg',
-                position: [0, DEFAULT_HEIGHT, -1],
-                rotateY: 0
-            }),
-            createAudioSource({
-                url: 'media/sound/drums.ogg',
-                position: [-1, DEFAULT_HEIGHT, 0],
-                rotateY: Math.PI * 0.5
-            }),
-            createAudioSource({
-                url: 'media/sound/perc.ogg',
-                position: [1, DEFAULT_HEIGHT, 0],
-                rotateY: Math.PI * -0.5
-            }),
-        ]).then((sources) => {
-            audioSources = sources;
-
-            // Once the audio is loaded, create a button that toggles the
-            // audio state when clicked.
-            playButton = new ButtonNode(playTexture, () => {
-                if (audioContext.state == 'running') {
-                    pauseAudio();
-                } else {
-                    playAudio();
-                }
-            });
-            playButton.translation = [0, 1.2, -0.65];
-            scene.addNode(playButton);
-        });
+        loadAudioSources(scene);
 
         navigator.xr.requestSession('inline').then(onSessionStarted);
     }
@@ -376,14 +173,17 @@ function updateInputSources(session, frame, refSpace) {
                 // position of the controller.
                 scene.inputRenderer.addController(gripPose.transform.matrix, inputSource.handedness); // let controller = this._controllers[handedness]; // so it is updating actually
                 // TODO: ZH: update location
-                if (inputSource.handedness == "left")
+                if(window.playerid){
+                    if (inputSource.handedness == "left")
                     window.avatars[window.playerid].leftController.position = gripPose.transform.matrix.getTranslation();
                 else if (inputSource.handedness == "right")
                     window.avatars[window.playerid].rightController.position = gripPose.transform.matrix.getTranslation();
+                }                
             }
         }
         let headPose = frame.getViewerPose(refSpace);
-        window.avatars[window.playerid].headset.position = headPose.matrix.getTranslation();
+        if(window.playerid)
+            window.avatars[window.playerid].headset.position = headPose.matrix.getTranslation();
         // TODO: send to websocket server for sync
     }
 }
@@ -445,22 +245,12 @@ function onXRFrame(t, frame) {
 
     updateInputSources(session, frame, refSpace);
 
+    updateAudioSources();
     // Update the position of all currently selected audio sources. It's
     // possible to select multiple audio sources and drag them at the same
-    // time (one per controller that has the trigger held down).
-    for (let source of audioSources) {
-        if (source.draggingInput) {
-            let draggingPose = frame.getPose(source.draggingInput.targetRaySpace, refSpace);
-            if (draggingPose) {
-                let pos = source.position;
-                mat4.multiply(tmpMatrix, draggingPose.transform.matrix, source.draggingTransform);
-                vec3.transformMat4(pos, [0, 0, 0], tmpMatrix);
-                source.source.setPosition(pos[0], pos[1], pos[2]);
-            }
-        }
-    }
+    // time (one per controller that has the trigger held down).    
 
-    updateAudioNodes();
+    updateAudioNodes(scene);
 
     // TODO: ZH: add scene nodes to scene for other avatars
 
