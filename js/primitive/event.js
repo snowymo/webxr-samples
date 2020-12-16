@@ -44,14 +44,14 @@ export function init() {
         console.log("join window.avatars");
         console.log(window.avatars);
 
-        window.updatePlayersMenu();
+        // window.updatePlayersMenu();
     });
 
     window.EventBus.subscribe("leave", (json) => {
         console.log(json);
         delete window.avatars[json["user"]];
 
-        window.updatePlayersMenu();
+        // window.updatePlayersMenu();
     });
 
     // window.EventBus.subscribe("tick", (json) => {
@@ -60,13 +60,14 @@ export function init() {
 
     window.EventBus.subscribe("avatar", (json) => {
         //if (MR.VRIsActive()) {
+        // console.log("subscribe avatar")
+        // console.log(json);
         const payload = json["data"];
-        //console.log(json);
         //console.log(payload);
         for (let key in payload) {
             //TODO: We should not be handling visible avatars like this.
             //TODO: This is just a temporary bandaid.
-            if (payload[key]["user"] in MR.avatars && payload[key]["state"]["mode"] == MR.UserType.vr) {
+            if (payload[key]["user"] in window.avatars) {
                 window.avatars[payload[key]["user"]].headset.position = payload[key]["state"]["pos"];
                 window.avatars[payload[key]["user"]].headset.orientation = payload[key]["state"]["rot"];
                 //console.log(payload[key]["state"]);
@@ -86,7 +87,7 @@ export function init() {
         //}
     });
 
-    
+
     /*
     // expected format of message
     const response = {

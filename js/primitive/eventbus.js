@@ -3,7 +3,7 @@
 // TODO:
 // handle scope with subscription
 // return unsubscribe "token"
-// make this a global, i.e. MR.EventBus
+// make this a global,
 // convert every event bus in metaroom to use this
 // potential priority levels to enforce ordering: [system | world | user]
 // this + networking - linearizability...

@@ -156,7 +156,7 @@ function playAudio() {
     }
 }
 
-function pauseAudio() {
+export function pauseAudio() {
     if (audioContext.state == 'suspended')
         return;
 
@@ -179,7 +179,8 @@ window.addEventListener('blur', () => {
     pauseAudio();
 });
 
-export function updateAudioSources(){
+export function updateAudioSources(frame, refSpace){
+    let tmpMatrix = mat4.create();
     for (let source of audioSources) {
         if (source.draggingInput) {
             let draggingPose = frame.getPose(source.draggingInput.targetRaySpace, refSpace);

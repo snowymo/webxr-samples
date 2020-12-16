@@ -7,7 +7,7 @@ class Avatar {
         this.leftController = leftController;
         this.rightController = rightController;
         //TODO: Do we really want this to be the default?
-        this.mode = MR.UserType.browser; 
+        // this.mode = MR.UserType.browser; 
     }
 }
 
@@ -15,7 +15,7 @@ class Headset {
     constructor(verts) {
         // this.vertices = verts;
         this.position = [0,0,0];
-        this.orientation = [0,0,0,0];
+        this.orientation = [0,0,0,1];
     }
 }
 
@@ -23,7 +23,7 @@ class Controller {
   constructor(verts) {
     // this.vertices = verts;
     this.position = [0,0,0];
-    this.orientation = [0,0,0,0];
+    this.orientation = [0,0,0,1];
     this.analog = new Button();
     this.trigger = new Button();
     this.side = new Button();

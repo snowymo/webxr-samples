@@ -8,7 +8,9 @@ import { InlineViewerHelper } from './util/inline-viewer-helper.js';
 import { QueryArgs } from './util/query-args.js';
 import { EventBus } from "./primitive/eventbus.js";
 import * as DefaultSystemEvents from "./primitive/event.js";
-import { loadAudioSources, updateAudioSources, updateAudioNodes, stereo, resonance, audioSources } from './util/positional-audio.js'
+import { loadAudioSources, updateAudioSources, updateAudioNodes, stereo, resonance, audioSources, pauseAudio } from './util/positional-audio.js'
+import {Client as WSClient} from "./util/websocket-client.js";
+// import {ServerPublishSubscribe as evtPubSub} from "./primitive/event-pubsub.js";
 
 // If requested, use the polyfill to provide support for mobile devices
 // and devices which only support WebVR.
@@ -53,6 +55,9 @@ function initXR() {
     window.EventBus = new EventBus();
     window.objs = [];
     DefaultSystemEvents.init();
+    // websocket
+    window.wsclient = new WSClient();
+    window.wsclient.connect(window.location.hostname, window.location.port);
 }
 
 function initGL() {
@@ -175,16 +180,15 @@ function updateInputSources(session, frame, refSpace) {
                 // TODO: ZH: update location
                 if(window.playerid){
                     if (inputSource.handedness == "left")
-                    window.avatars[window.playerid].leftController.position = gripPose.transform.matrix.getTranslation();
+                    window.avatars[window.playerid].leftController.position = gripPose.transform.position;
                 else if (inputSource.handedness == "right")
-                    window.avatars[window.playerid].rightController.position = gripPose.transform.matrix.getTranslation();
+                    window.avatars[window.playerid].rightController.position = gripPose.transform.position;
                 }                
             }
         }
         let headPose = frame.getViewerPose(refSpace);
         if(window.playerid)
-            window.avatars[window.playerid].headset.position = headPose.matrix.getTranslation();
-        // TODO: send to websocket server for sync
+            window.avatars[window.playerid].headset.position = headPose.transform.position;
     }
 }
 
@@ -231,7 +235,6 @@ function onSelectEnd(ev) {
     }
 }
 
-let tmpMatrix = mat4.create();
 function onXRFrame(t, frame) {
     let session = frame.session;
     let refSpace = session.isImmersive ?
@@ -245,7 +248,11 @@ function onXRFrame(t, frame) {
 
     updateInputSources(session, frame, refSpace);
 
-    updateAudioSources();
+    // TODO: send to websocket server for sync
+    if(window.playerid != null)
+        window.wsclient.send("avatar", window.playerid);
+
+    updateAudioSources(frame, refSpace);
     // Update the position of all currently selected audio sources. It's
     // possible to select multiple audio sources and drag them at the same
     // time (one per controller that has the trigger held down).    
