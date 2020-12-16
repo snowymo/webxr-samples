@@ -113,12 +113,16 @@ let websocketMap = new Map();
 const datastore = new DataStore();
 let avatars = {};
 let timers = {};
-const AVATAR_RATE = 100;
+const AVATAR_RATE = 16;
 setInterval(() => {
     console.log("current connections:");
     console.log(Array.from(websocketMap.keys()));
     console.log("avatars: ");
     console.log(avatars);
+    for(let id in avatars){
+        console.log(avatars[id]["state"]["mtx"]);
+    }
+    
 }, 5000);
 
 function send(to, from, message) {

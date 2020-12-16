@@ -1,6 +1,9 @@
 'use strict';
 
-class Avatar {
+import { Gltf2Node } from '../render/nodes/gltf2.js';
+import { mat4, vec3 } from '../render/math/gl-matrix.js';
+
+export class Avatar {
     constructor(head, id, leftController, rightController){
         this.playerid = id;
         this.headset = head;
@@ -11,28 +14,43 @@ class Avatar {
     }
 }
 
-class Headset {
+export class Headset {
     constructor(verts) {
         // this.vertices = verts;
-        this.position = [0,0,0];
+        this.position = vec3.fromValues(0,0,0);
         this.orientation = [0,0,0,1];
+        this.matrix = mat4.fromValues(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1);
+        this.model = new Gltf2Node({url: '../../media/gltf/headset/headset.gltf'});
+        this.model.scale = vec3.fromValues (1,1,1);
+        this.model.name = "headset";
+        this.model.visible = false;
     }
 }
 
-class Controller {
-  constructor(verts) {
+export class Controller {
+  constructor(handedness) {
     // this.vertices = verts;
-    this.position = [0,0,0];
+    this.position = vec3.fromValues(0,0,0);
     this.orientation = [0,0,0,1];
-    this.analog = new Button();
-    this.trigger = new Button();
-    this.side = new Button();
-    this.x = new Button();
-    this.y = new Button();
+    // this.analog = new Button();
+    // this.trigger = new Button();
+    // this.side = new Button();
+    // this.x = new Button();
+    // this.y = new Button();
+    if(handedness == "left"){
+      this.model = new Gltf2Node({url: '../../media/gltf/controller/controller-left.gltf'});
+    }
+    else{
+      this.model = new Gltf2Node({url: '../../media/gltf/controller/controller.gltf'});
+    }
+    this.matrix = mat4.fromValues(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1);
+    this.model.scale = vec3.fromValues (1,1,1);
+    this.model.name = "ctrl";
+    this.model.visible = false;
   }  
 }
 
-class Button {
+export class Button {
      //buttons have a 'pressed' variable that is a boolean.
         /*A quick mapping of the buttons:
           0: analog stick

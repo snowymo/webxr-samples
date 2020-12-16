@@ -33,14 +33,17 @@ export class Client {
                     type: "avatar",
                     user: data,
                     state: {
+                        mtx: window.avatars[data].headset.matrix,
                         pos: window.avatars[data].headset.position,
                         rot: window.avatars[data].headset.orientation,
                         controllers: {
                             left: {
+                                mtx: window.avatars[data].leftController.matrix,
                                 pos: window.avatars[data].leftController.position,
                                 rot: window.avatars[data].leftController.orientation,
                             },
                             right: {  
+                                mtx: window.avatars[data].rightController.matrix,
                                 pos: window.avatars[data].rightController.position,
                                 rot: window.avatars[data].rightController.orientation,  
                             }

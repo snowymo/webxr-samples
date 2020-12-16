@@ -1,5 +1,7 @@
 'use strict';
 
+import {Headset, Controller, Avatar} from "./avatar.js"
+
 export function init() {
     window.EventBus.subscribe("initialize", (json) => {
 
@@ -11,8 +13,8 @@ export function init() {
 
         // let headset = new Gltf2Node({url: '../../media/gltf/headset/headset.gltf'});
         let headset = new Headset();
-        let leftController = new Controller();
-        let rightController = new Controller();
+        let leftController = new Controller("left");
+        let rightController = new Controller("right");
         let playerAvatar = new Avatar(headset, id, leftController, rightController);
 
         for (let key in json["avatars"]) {
@@ -36,8 +38,15 @@ export function init() {
 
         } else {
             let headset = new Headset();
-            let leftController = new Controller();
-            let rightController = new Controller();
+            let leftController = new Controller("left");
+            let rightController = new Controller("right");
+            // setup render nodes for new avatar
+            headset.model.name = "headset" + id;
+            window.scene.addNode(headset.model);
+            leftController.model.name = "LC" + id;
+            window.scene.addNode(leftController.model);
+            rightController.model.name = "RC" + id;
+            window.scene.addNode(rightController.model);
             let avatar = new Avatar(headset, id, leftController, rightController);
             window.avatars[id] = avatar;
         }
@@ -68,18 +77,21 @@ export function init() {
             //TODO: We should not be handling visible avatars like this.
             //TODO: This is just a temporary bandaid.
             if (payload[key]["user"] in window.avatars) {
+                window.avatars[payload[key]["user"]].headset.matrix = payload[key]["state"]["mtx"];
                 window.avatars[payload[key]["user"]].headset.position = payload[key]["state"]["pos"];
                 window.avatars[payload[key]["user"]].headset.orientation = payload[key]["state"]["rot"];
                 //console.log(payload[key]["state"]);
-                window.avatars[payload[key]["user"]].leftController.position = payload[key]["state"].controllers.left.pos;
-                window.avatars[payload[key]["user"]].leftController.orientation = payload[key]["state"].controllers.left.rot;
-                window.avatars[payload[key]["user"]].rightController.position = payload[key]["state"].controllers.right.pos;
-                window.avatars[payload[key]["user"]].rightController.orientation = payload[key]["state"].controllers.right.rot;
-                window.avatars[payload[key]["user"]].mode = payload[key]["state"]["mode"];
+                window.avatars[payload[key]["user"]].leftController.matrix = payload[key]["state"]["controllers"]["left"]["mtx"];
+                window.avatars[payload[key]["user"]].leftController.position = payload[key]["state"]["controllers"]["left"]["pos"];
+                window.avatars[payload[key]["user"]].leftController.orientation = payload[key]["state"]["controllers"]["left"]["rot"];
+                window.avatars[payload[key]["user"]].rightController.matrix = payload[key]["state"]["controllers"]["right"]["mtx"];
+                window.avatars[payload[key]["user"]].rightController.position = payload[key]["state"]["controllers"]["right"]["pos"];
+                window.avatars[payload[key]["user"]].rightController.orientation = payload[key]["state"]["controllers"]["right"]["rot"];
+                // window.avatars[payload[key]["user"]].mode = payload[key]["state"]["mode"];
             } else {
                 // never seen, create
                 //ALEX: AVATARS WHO ARE ALSO IN BROWSER MODE GO HERE...
-                //console.log("previously unseen user avatar");
+                console.log("previously unseen user avatar", payload[key]["user"]);
                 // let avatarCube = createCubeVertices();
                 // MR.avatars[payload[key]["user"]] = new Avatar(avatarCube, payload[key]["user"]);
             }
