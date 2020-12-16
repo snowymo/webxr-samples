@@ -1,0 +1,28 @@
+{
+  "name": "immersive-presentation",
+  "version": "1.0.0",
+  "description": "SIG21 mvp",
+  "main": "server.js",
+  "directories": {
+    "test": "tests"
+  },
+  "dependencies": {
+    "webxr-polyfill": "^2.0.3",
+    "ws": "^7.4.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "node server.js",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/snowymo/webxr-samples.git"
+  },
+  "author": "Zhenyi He",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/snowymo/webxr-samples/issues"
+  },
+  "homepage": "https://github.com/snowymo/webxr-samples#readme"
+}
