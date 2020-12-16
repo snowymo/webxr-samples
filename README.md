@@ -6,4 +6,6 @@ Samples to demonstrate use of the WebXR Device API
 
 ``` npm start ```
 
-go to https://yourip:2000
+go to https://yourip:2000 and click the first link: SIGGRAPH 2021
+
+or go to https://yourip:2000/sig21.html
