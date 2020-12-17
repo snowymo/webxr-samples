@@ -10,7 +10,7 @@ const util = require("util");
 const WebSocketServer = WebSocket.Server;
 
 var env = "local";
-var port = 2000;
+var port = 8447;
 
 // Yes, TLS is required
 const serverConfig = env == "local" ?
