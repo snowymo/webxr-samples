@@ -30,7 +30,7 @@ let inlineViewerHelper = null;
 let gl = null;
 let renderer = null;
 window.scene = new Scene();
-// window.scene.addNode(new Gltf2Node({ url: '../media/gltf/garage/garage.gltf' }));
+window.scene.addNode(new Gltf2Node({ url: '../media/gltf/garage/garage.gltf' }));
 window.testHeadset = new Gltf2Node({ url: '../media/gltf/controller/controller.gltf' })
 window.scene.addNode(window.testHeadset);
 window.scene.standingStats(true);

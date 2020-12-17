@@ -4,7 +4,7 @@ import {Headset, Controller, Avatar} from "./avatar.js"
 
 export function init() {
     window.EventBus.subscribe("initialize", (json) => {
-
+        console.log("receive event: initialize");
         if (!window.avatars) {
             window.avatars = {};
         }
@@ -19,6 +19,29 @@ export function init() {
 
         for (let key in json["avatars"]) {
             const avid = json["avatars"][key]["user"];
+
+            let headset = new Headset();
+            let leftController = new Controller("left");
+            let rightController = new Controller("right");
+            // setup render nodes for new avatar
+            headset.model.name = "headset" + avid;
+            headset.matrix = json["avatars"][key]["state"]["mtx"];
+            headset.position = json["avatars"][key]["state"]["pos"];
+            headset.orientation = json["avatars"][key]["state"]["rot"];
+            window.scene.addNode(headset.model);
+
+            leftController.model.name = "LC" + avid;
+            leftController.matrix = json["avatars"][key]["state"]["controllers"]["left"]["mtx"];
+            leftController.position = json["avatars"][key]["state"]["controllers"]["left"]["pos"];
+            leftController.orientation = json["avatars"][key]["state"]["controllers"]["left"]["rot"];
+            window.scene.addNode(leftController.model);
+
+            rightController.model.name = "RC" + avid;
+            rightController.matrix = json["avatars"][key]["state"]["controllers"]["right"]["mtx"];
+            rightController.position = json["avatars"][key]["state"]["controllers"]["right"]["pos"];
+            rightController.orientation = json["avatars"][key]["state"]["controllers"]["right"]["rot"];
+            window.scene.addNode(rightController.model);
+
             let avatar = new Avatar(headset, avid, leftController, rightController);
             window.avatars[avid] = avatar;
         }
@@ -31,6 +54,7 @@ export function init() {
     });
 
     window.EventBus.subscribe("join", (json) => {
+        console.log("receive event: join");
         console.log(json);
         const id = json["id"];
 

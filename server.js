@@ -118,9 +118,10 @@ setInterval(() => {
     console.log("current connections:");
     console.log(Array.from(websocketMap.keys()));
     console.log("avatars: ");
-    console.log(avatars);
+    // console.log(avatars);
     for(let id in avatars){
-        console.log(avatars[id]["state"]["mtx"]);
+        console.log("id", id, "pos_x:");
+        console.log(avatars[id]["state"]["mtx"]['12']);
     }
     
 }, 5000);
