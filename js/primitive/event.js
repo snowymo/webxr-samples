@@ -1,6 +1,6 @@
 'use strict';
 
-import {Headset, Controller, Avatar} from "./avatar.js"
+import { Headset, Controller, Avatar } from "./avatar.js"
 
 export function init() {
     window.EventBus.subscribe("initialize", (json) => {
@@ -121,6 +121,52 @@ export function init() {
             }
         }
         //}
+    });
+
+    window.EventBus.subscribe("webrtc", (json) => {
+        var signal = json["state"];
+        console.log("receive webrtc");
+        console.log(signal);
+        if (!signal.roomID)
+            return;
+
+        var peerUuid = signal.uuid;
+
+        // Ignore messages that are not for us or from ourselves
+        if (peerUuid == window.voip.localUuid || (signal.dest != window.voip.localUuid && signal.dest != 'all' && signal.roomID != window.voip.roomID)) return;
+
+        if (signal.displayName && signal.dest == 'all' && signal.roomID == window.voip.roomID) {
+            // set up peer connection object for a newcomer peer
+            console.log("set up peer connection object for a newcomer peer:" + peerUuid);
+            window.voip.setUpPeer(peerUuid, signal.displayName);
+            window.wsclient.send("webrtc",
+                {
+                    uuid: window.voip.localUuid,
+                    roomID: window.voip.roomID,
+                });
+            // JSON.stringify({ 'MR_Message': "Broadcast_All", 'displayName': MRVoip.username, 'uuid': MRVoip.localUuid, 'dest': peerUuid, 'roomID': MRVoip.roomID }));
+
+        } else if (signal.displayName && signal.dest == window.voip.localUuid && signal.roomID == window.voip.roomID) {
+            // initiate call if we are the newcomer peer
+            console.log("initiate call if we are the newcomer peer:" + peerUuid);
+            window.voip.setUpPeer(peerUuid, signal.displayName, true);
+
+        } else if (signal.sdp) {
+            if ("nego" in window.voip.peerConnections[peerUuid]) {
+                console.log("already setRemoteDescription in window.voip.peerConnections[" + peerUuid + "]");
+            } else {
+                window.voip.peerConnections[peerUuid].nego = true;
+                window.voip.peerConnections[peerUuid].pc.setRemoteDescription(new RTCSessionDescription(signal.sdp)).then(function () {
+                    // Only create answers in response to offers
+                    if (signal.sdp.type == 'offer') {
+                        window.voip.peerConnections[peerUuid].pc.createAnswer().then(description => window.voip.createdDescription(window.voip, description, peerUuid)).catch(MRVoip.errorHandler);
+                    }
+                }).catch(window.voip.errorHandler);
+            }
+
+        } else if (signal.ice) {
+            window.voip.peerConnections[peerUuid].pc.addIceCandidate(new RTCIceCandidate(signal.ice)).catch(window.voip.errorHandler);
+        }
     });
 
 

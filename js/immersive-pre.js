@@ -10,6 +10,7 @@ import { EventBus } from "./primitive/eventbus.js";
 import * as DefaultSystemEvents from "./primitive/event.js";
 import { loadAudioSources, updateAudioSources, updateAudioNodes, stereo, resonance, audioSources, pauseAudio } from './util/positional-audio.js'
 import { Client as WSClient } from "./util/websocket-client.js";
+import {VoIP_webrtc} from "./util/voip-webrtc.js"
 // import {Avatar} from "./primitive/avatar.js"
 
 // import {ServerPublishSubscribe as evtPubSub} from "./primitive/event-pubsub.js";
@@ -62,6 +63,7 @@ function initXR() {
     // websocket
     window.wsclient = new WSClient();
     window.wsclient.connect(window.location.hostname, window.location.port);
+    // window.voip = new VoIP_webrtc(window.wsclient);
 }
 
 function initGL() {

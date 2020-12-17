@@ -1,7 +1,7 @@
 "use strict"
 
-import {ServerPublishSubscribe as evtPubSub} from "../primitive/event-pubsub.js";
-
+import { ServerPublishSubscribe as evtPubSub } from "../primitive/event-pubsub.js";
+import {VoIP_webrtc} from "./voip-webrtc.js"
 // TODO: add ping pong heartbeart to keep connections alive
 // TODO: finish automatic reconnection
 // TODO: max retries + timeout
@@ -19,7 +19,7 @@ export class Client {
         // Delay should be equal to the interval at which your server
         // sends out pings plus a conservative assumption of the latency.
         this.pingTimeout = setTimeout(() => {
-        // this.close(); // i.e. revisit this...
+            // this.close(); // i.e. revisit this...
         }, this.heartbeatTick + 1000);
     }
 
@@ -27,7 +27,7 @@ export class Client {
     // TODO: add guaranteed delivery
     send(type, data) {
         let message;
-        switch(type){
+        switch (type) {
             case "avatar":
                 message = {
                     type: "avatar",
@@ -42,23 +42,40 @@ export class Client {
                                 pos: window.avatars[data].leftController.position,
                                 rot: window.avatars[data].leftController.orientation,
                             },
-                            right: {  
+                            right: {
                                 mtx: window.avatars[data].rightController.matrix,
                                 pos: window.avatars[data].rightController.position,
-                                rot: window.avatars[data].rightController.orientation,  
+                                rot: window.avatars[data].rightController.orientation,
                             }
                         }
                     }
                 };
                 break;
-                default:
-                    break;
+                // TODO: seems not consistent with what we have for eyecontact
+            case "webrtc":
+                {
+                    message = {
+                        type: "webrtc",
+                        uid: window.playerid,
+                        state: {
+                            uuid: data.uuid,
+                            roomID: data.roomID,
+                            displayName: window.playerid,
+                            dest: 'all'
+                        }
+                    };
+                }
+                console.log("send webrtc");
+                console.log(message);
+                break;
+            default:
+                break;
         }
-       this.ws.send(JSON.stringify(message));
+        this.ws.send(JSON.stringify(message));
     }
 
     connect(ip, port) {
-        try {            
+        try {
             this.ws = new WebSocket('wss://' + ip + ':' + port);
             console.log('wss://' + ip + ':' + port);
 
@@ -71,6 +88,8 @@ export class Client {
                 console.log('websocket is connected ...');
                 this.subs.publish('open', null);
                 if (this.ws.readyState == WebSocket.OPEN) {
+                    // create webrtc
+                    window.voip = new VoIP_webrtc(window.wsclient);
                 } else {
                 }
                 // ws.send('connected');
@@ -86,7 +105,7 @@ export class Client {
                     // }
                     let json = JSON.parse(ev.data);
                     window.EventBus.publish(json["type"], json);
-                } catch(err) {
+                } catch (err) {
                     // console.log("bad json:", json);
                     console.error(err);
                 }
@@ -102,7 +121,7 @@ export class Client {
                     default:
                         console.log('reconnecting...');
                         break;
-                    }
+                }
                 console.log("disconnected");
                 clearTimeout(this.pingTimeout);
             };

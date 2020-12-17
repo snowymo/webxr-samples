@@ -119,11 +119,10 @@ setInterval(() => {
     console.log(Array.from(websocketMap.keys()));
     console.log("avatars: ");
     // console.log(avatars);
-    for(let id in avatars){
-        console.log("id", id, "pos_x:");
-        console.log(avatars[id]["state"]["mtx"]['12']);
+    for (let id in avatars) {
+        console.log("id", id, "pos_x:", avatars[id]["state"]["mtx"]['12']);
     }
-    
+
 }, 5000);
 
 function send(to, from, message) {
@@ -197,8 +196,10 @@ wss.on('connection', function (ws, req) {
             // console.log(err);
             return;
         }
+        
         switch (json["type"]) {
-            case "object":{
+            case "object": {
+                console.log("receive ws msg:", json["type"]);
                 const key = json["uid"];
                 const lockid = json["lockid"];
                 const state = json["state"];
@@ -229,7 +230,7 @@ wss.on('connection', function (ws, req) {
                     console.log("object in use.");
                 }
                 break;
-            }                
+            }
             case "avatar":
                 {
                     // console.log("receive avatar msg");
@@ -237,14 +238,31 @@ wss.on('connection', function (ws, req) {
                     const userid = json["user"];
                     const state = json["state"];
                     // console.log("userid", userid);
-    
+
                     avatars[userid] = {
                         'user': userid,
                         'state': state
                     };
                     // console.log(avatars);
                     break;
-                }                
+                }
+            case "webrtc": {
+                console.log("receive ws msg:", json["type"]);
+                // console.log(json["type"], avatars);
+                const key = json["uid"];
+                const state = json["state"];
+
+                // avatars[key].webrtc = state[uuid];
+                const response = {
+                    "type": "webrtc",
+                    "id": ws.index,
+                    "uid": key,
+                    "state": state,
+                    "success": true
+                };
+                send("*", -1, response);
+                break;
+            }
             default:
                 break;
         }

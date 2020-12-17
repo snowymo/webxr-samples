@@ -25,7 +25,7 @@ audioContext.suspend();
 
 // TODO: This is crashing in recent versions of Resonance for me, and I'm
 // not sure why. It does run succesfully without it, though.
-// Rough room dimensions in meters (estimated from model in Blender.)
+// Rough roomID dimensions in meters (estimated from model in Blender.)
 /*let roomDimensions = {
   width : 6,
   height : 3,
