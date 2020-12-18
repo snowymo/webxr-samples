@@ -62,7 +62,12 @@ function initXR() {
     DefaultSystemEvents.init();
     // websocket
     window.wsclient = new WSClient();
-    window.wsclient.connect(window.location.hostname, window.location.port || window.wsport);
+    if(window.location.port){
+        window.wsclient.connect(window.location.hostname, window.location.port);
+    }else{
+        window.wsclient.connect("eye.3dvar.com", window.wsport);
+    }
+    
     // window.voip = new VoIP_webrtc(window.wsclient);
     // window.microphoneInit();
 }
