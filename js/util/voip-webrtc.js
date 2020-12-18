@@ -5,12 +5,46 @@ window.localUuid = "";
 // window.localStream;
 window.peerConnections = {}; // key is uuid, values are peer connection object and user defined display name string
 window.remoteIDs = [];
+// const AudioContext = window.AudioContext || window.webkitAudioContext;
 var peerConnectionConfig = {
     'iceServers': [
         { 'urls': 'stun:stun.stunprotocol.org:3478' },
         { 'urls': 'stun:stun.l.google.com:19302' },
     ]
 };
+
+function setUserMediaVariable() {
+
+    if (navigator.mediaDevices === undefined) {
+        navigator.mediaDevices = {};
+    }
+
+    navigator.mediaDevices.enumerateDevices()
+        .then(function (devices) {
+            devices.forEach(function (device) {
+                console.log(device.kind + ": " + device.label +
+                    " id = " + device.deviceId);
+            });
+        })
+
+    if (navigator.mediaDevices.getUserMedia === undefined) {
+        navigator.mediaDevices.getUserMedia = function (constraints) {
+
+            // gets the alternative old getUserMedia is possible
+            var getUserMedia = navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+
+            // set an error message if browser doesn't support getUserMedia
+            if (!getUserMedia) {
+                return Promise.reject(new Error("Unfortunately, your browser does not support access to the webcam through the getUserMedia API. Try to use the latest version of Google Chrome, Mozilla Firefox, Opera, or Microsoft Edge instead."));
+            }
+
+            // uses navigator.getUserMedia for older browsers
+            return new Promise(function (resolve, reject) {
+                getUserMedia.call(navigator, constraints, resolve, reject);
+            });
+        }
+    }
+}
 
 window.webrtc_start = function () {
     window.localUuid = window.avatars[window.playerid].localUuid;
@@ -19,6 +53,8 @@ window.webrtc_start = function () {
     var constraints = {
         audio: true,
     };
+
+    setUserMediaVariable();
 
     if (navigator.mediaDevices.getUserMedia) {
         navigator.mediaDevices.getUserMedia(constraints)
