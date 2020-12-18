@@ -1,4 +1,4 @@
-import { mat4, vec3 } from '../render/math/gl-matrix.js';
+import { mat4, vec3, quat } from '../render/math/gl-matrix.js';
 
 // vars
 window.localUuid = "";
@@ -43,7 +43,6 @@ window.webrtc_start = function () {
                 // }
                 window.wsclient.send("webrtc", { 'displayName': window.playerid, 'uuid': window.localUuid, 'dest': 'all' });
             }).catch(errorHandler);
-
     } else {
         alert('Your browser does not support getUserMedia API');
     }
@@ -63,6 +62,31 @@ function setUpPeer(peerUuid, displayName, initCall = false) {
 }
 window.setUpPeer = setUpPeer;
 
+window.mute = function (peerUuid = window.localUuid) {
+    // or unmute
+    if (peerUuid == window.localUuid) {
+        console.log('local', window.localUuid);
+        for (let id in window.avatars) {
+            console.log(window.avatars[id].localUuid);
+        }
+    } else {
+        var hasAudio = false;
+        console.log(peerUuid, window.peerConnections, window.peerConnections[peerUuid]);
+        window.peerConnections[peerUuid].pc.streams.forEach((stream) => {
+            stream.getTracks().forEach((t) => {
+                if (t.kind === 'audio') {
+                    t.enabled = !t.enabled;
+                    hasAudio = t.enabled;
+                    return hasAudio;
+                }
+            });
+        });
+
+        return hasAudio;
+    }
+
+}
+
 function gotIceCandidate(event, peerUuid) {
     if (event.candidate != null) {
         window.wsclient.send("webrtc", { 'ice': event.candidate, 'uuid': window.localUuid, 'dest': peerUuid });
@@ -71,14 +95,14 @@ function gotIceCandidate(event, peerUuid) {
 
 function createdDescription(description, peerUuid) {
     console.log(`got description, peer ${peerUuid}`);
-    if("localdesc" in window.peerConnections[peerUuid]){
+    if ("localdesc" in window.peerConnections[peerUuid]) {
         console.log("already set local description");
-    }else{
+    } else {
         window.peerConnections[peerUuid].localdesc = true;
         window.peerConnections[peerUuid].pc.setLocalDescription(description).then(function () {
-            window.wsclient.send("webrtc", {'sdp': window.peerConnections[peerUuid].pc.localDescription, 'uuid': window.localUuid, 'dest': peerUuid });
+            window.wsclient.send("webrtc", { 'sdp': window.peerConnections[peerUuid].pc.localDescription, 'uuid': window.localUuid, 'dest': peerUuid });
         }).catch(errorHandler);
-    }    
+    }
 }
 window.createdDescription = createdDescription;
 
@@ -88,22 +112,33 @@ function gotRemoteStream(event, peerUuid) {
     // }
     // connection_uids[peerUuid] = true;
     console.log(`got remote stream, peer ${peerUuid}`);
-    playAudio(event.streams[0], peerUuid);
 
     var vidElement = document.createElement('video');
-  vidElement.setAttribute('autoplay', '');
-  // vidElement.setAttribute('muted', '');
-  vidElement.srcObject = event.streams[0];
-  vidElement.style.display = 'none';
+    vidElement.setAttribute('autoplay', '');
+    vidElement.setAttribute('muted', '');
+    vidElement.srcObject = event.streams[0];
+    vidElement.onloadedmetadata = function (e) {
+        vidElement.muted = true;
+    };
 
-  var vidContainer = document.createElement('div');
-  vidContainer.setAttribute('id', 'remoteAudio_' + peerUuid);
-  vidContainer.appendChild(vidElement);
+    playAvatarAudio(event.streams[0], peerUuid);
 
-  document.getElementById('audios').appendChild(vidContainer);
+
+    var vidContainer = document.createElement('div');
+    vidContainer.setAttribute('id', 'remoteAudio_' + peerUuid);
+    // vidContainer.appendChild(vidElement);
+
+    var videosElement = document.getElementById('audios');
+    if (videosElement == null) {
+        videosElement = document.createElement('div');
+        videosElement.setAttribute("id", "audios");
+        document.body.appendChild(videosElement);
+    }
+
+    document.getElementById('audios').appendChild(vidContainer);
 }
 
-function playAudio(stream, peerUuid) {
+function playAvatarAudio(stream, peerUuid) {
     // 
     if (initAudio(peerUuid)) {
         // how many times this got called?
@@ -142,23 +177,42 @@ function initAudio(peerUuid) {
         sampleRate: 44100,
     });
 
-    var pos = vec3.create();
-    mat4.getTranslation(pos, window.avatars[window.peerConnections[peerUuid].displayName].headset.matrix);
-    window.peerConnections[peerUuid].audioContext.listener.setPosition(pos[0], pos[1], pos[2]
-    );
+    // listener: where I am
+    window.peerConnections[peerUuid].audioContext.listener.setPosition(
+        window.avatars[window.playerid].headset.position[0],
+        window.avatars[window.playerid].headset.position[1],
+        window.avatars[window.playerid].headset.position[2]);
+    var rotation = window.avatars[window.playerid].headset.orientation;
+    var fwd = vec3.create();
+    quat.getEuler(fwd, rotation);
+    window.peerConnections[peerUuid].audioContext.listener.forwardY.value = fwd[1];
+
+    console.log('src', window.avatars[window.playerid].headset.position, fwd,
+        'des', window.peerConnections[peerUuid].audioContext.listener.positionX, 
+        window.peerConnections[peerUuid].audioContext.listener.positionY,
+        window.peerConnections[peerUuid].audioContext.listener.positionZ,
+        window.peerConnections[peerUuid].audioContext.listener.forwardY);
     // 0.1, 0, 0);
     // that.audioContext.listener.orientationY(0);
     // that.audioContext.listener.orientationZ(-1);
+
+    // panner: audio source
+    var pos = vec3.create();
+    var orientation = quat.create();
+    mat4.getTranslation(pos, window.avatars[window.peerConnections[peerUuid].displayName].headset.matrix);
+    mat4.getRotation(orientation, window.avatars[window.peerConnections[peerUuid].displayName].headset.matrix);
+    var euler = vec3.create();
+    quat.getEuler(euler, orientation);
     window.peerConnections[peerUuid].panner = new PannerNode(window.peerConnections[peerUuid].audioContext, {
         // equalpower or HRTF
         panningModel: 'HRTF',
         // linear, inverse, exponential
-        distanceModel: 'exponential',
-        positionX: 0.0,
-        positionY: 0.1,
-        positionZ: 0.0,
-        orientationX: 1.0,
-        orientationY: 0.0,
+        distanceModel: 'linear',
+        positionX: pos[0],
+        positionY: pos[1],
+        positionZ: pos[2],
+        orientationX: 0.0,
+        orientationY: euler[1],
         orientationZ: 0.0,
         refDistance: .1,
         maxDistance: 10000,
@@ -175,7 +229,7 @@ function checkPeerDisconnect(event, peerUuid) {
     console.log(`connection with peer ${peerUuid} ${state}`);
     if (state === "failed" || state === "closed" || state === "disconnected") {
         delete window.peerConnections[peerUuid];
-        delete connection_uids[peerUuid];
+        // delete connection_uids[peerUuid];
     }
 }
 
