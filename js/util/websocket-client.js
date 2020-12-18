@@ -1,7 +1,7 @@
 "use strict"
 
 import { ServerPublishSubscribe as evtPubSub } from "../primitive/event-pubsub.js";
-import {VoIP_webrtc} from "./voip-webrtc.js"
+// import {VoIP_webrtc} from "./voip-webrtc.js"
 // TODO: add ping pong heartbeart to keep connections alive
 // TODO: finish automatic reconnection
 // TODO: max retries + timeout
@@ -57,16 +57,10 @@ export class Client {
                     message = {
                         type: "webrtc",
                         uid: window.playerid,
-                        state: {
-                            uuid: data.uuid,
-                            roomID: data.roomID,
-                            displayName: window.playerid,
-                            dest: 'all'
-                        }
+                        state: data
                     };
                 }
-                console.log("send webrtc");
-                console.log(message);
+                // console.log("send webrtc", message);
                 break;
             default:
                 break;
@@ -89,7 +83,7 @@ export class Client {
                 this.subs.publish('open', null);
                 if (this.ws.readyState == WebSocket.OPEN) {
                     // create webrtc
-                    window.voip = new VoIP_webrtc(window.wsclient);
+                    // window.voip = new VoIP_webrtc(window.wsclient);
                 } else {
                 }
                 // ws.send('connected');

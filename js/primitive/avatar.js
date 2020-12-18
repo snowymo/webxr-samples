@@ -11,7 +11,23 @@ export class Avatar {
         this.rightController = rightController;
         //TODO: Do we really want this to be the default?
         // this.mode = MR.UserType.browser; 
+        // webrtc
+        this.roomID = "chalktalk";
+        this.localUuid = this.createUUID();
+        this.localStream = null;
+        
+        this.audioContext = null;
     }
+
+    // Taken from http://stackoverflow.com/a/105074/515584
+    // Strictly speaking, it's not a real UUID, but it gets the job done here
+    createUUID() {
+      function s4() {
+          return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
+      }
+
+      return s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4();
+  }
 }
 
 export class Headset {
