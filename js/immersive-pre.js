@@ -13,7 +13,7 @@ import { Client as WSClient } from "./util/websocket-client.js";
 // import {VoIP_webrtc} from "./util/voip-webrtc.js"
 // import {Avatar} from "./primitive/avatar.js"
 
-// import {ServerPublishSubscribe as evtPubSub} from "./primitive/event-pubsub.js";
+window.wsport = 8447
 
 // If requested, use the polyfill to provide support for mobile devices
 // and devices which only support WebVR.
@@ -62,7 +62,7 @@ function initXR() {
     DefaultSystemEvents.init();
     // websocket
     window.wsclient = new WSClient();
-    window.wsclient.connect(window.location.hostname, window.location.port);
+    window.wsclient.connect(window.location.hostname, window.location.port || window.wsport);
     // window.voip = new VoIP_webrtc(window.wsclient);
     // window.microphoneInit();
 }
