@@ -62,14 +62,18 @@ function initXR() {
     DefaultSystemEvents.init();
     // websocket
     window.wsclient = new WSClient();
-    if(window.location.port){
+    if (window.location.port) {
         window.wsclient.connect(window.location.hostname, window.location.port);
-    }else{
+    } else {
         window.wsclient.connect("eye.3dvar.com", window.wsport);
     }
-    
+
     // window.voip = new VoIP_webrtc(window.wsclient);
     // window.microphoneInit();
+}
+
+window.testws = function () {
+    window.wsclient.send("test");
 }
 
 function initGL() {
@@ -191,27 +195,27 @@ function updateInputSources(session, frame, refSpace) {
                 window.scene.inputRenderer.addController(gripPose.transform.matrix, inputSource.handedness); // let controller = this._controllers[handedness]; // so it is updating actually
                 // TODO: ZH: update location
                 if (window.playerid) {
-                    if (inputSource.handedness == "left"){
+                    if (inputSource.handedness == "left") {
                         window.avatars[window.playerid].leftController.position = gripPose.transform.position;
                         window.avatars[window.playerid].leftController.orientation = gripPose.transform.orientation;
                         window.avatars[window.playerid].leftController.matrix = gripPose.transform.matrix;
-                    }                        
-                    else if (inputSource.handedness == "right"){
+                    }
+                    else if (inputSource.handedness == "right") {
                         window.avatars[window.playerid].rightController.position = gripPose.transform.position;
                         window.avatars[window.playerid].rightController.orientation = gripPose.transform.orientation;
                         window.avatars[window.playerid].rightController.matrix = gripPose.transform.matrix;
                     }
-                        
+
                 }
             }
         }
         let headPose = frame.getViewerPose(refSpace);
-        if (window.playerid){
+        if (window.playerid) {
             window.avatars[window.playerid].headset.position = headPose.transform.position;
             window.avatars[window.playerid].headset.orientation = headPose.transform.orientation;
             window.avatars[window.playerid].headset.matrix = headPose.transform.matrix;
         }
-            
+
     }
 }
 
@@ -300,15 +304,12 @@ function updateAvatars() {
             continue;
         let avatar = window.avatars[id];
         if (avatar.headset.position.x || avatar.headset.position.y || avatar.headset.position.z) {
-            // not in the default pos
-            avatar.headset.model.visible = true;
+            // not in the default pos            
             avatar.headset.model.matrix = avatar.headset.matrix;
             // avatar.headset.model.translation = avatar.headset.position;
             // avatar.headset.model.rotation = avatar.headset.orientation;
             // avatar.headset.model.scale = vec3.fromValues(1,1,1);
-            avatar.leftController.model.visible = true;
             avatar.leftController.model.matrix = avatar.leftController.matrix;
-            avatar.rightController.model.visible = true;
             avatar.rightController.model.matrix = avatar.rightController.matrix;
         }
     }

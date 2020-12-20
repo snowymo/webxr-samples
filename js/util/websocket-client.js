@@ -32,6 +32,7 @@ export class Client {
                 message = {
                     type: "avatar",
                     user: data,
+                    ts: Date.now(),
                     state: {
                         mtx: window.avatars[data].headset.matrix,
                         pos: window.avatars[data].headset.position,
@@ -51,16 +52,25 @@ export class Client {
                     }
                 };
                 break;
-                // TODO: seems not consistent with what we have for eyecontact
+            // TODO: seems not consistent with what we have for eyecontact
             case "webrtc":
                 {
                     message = {
                         type: "webrtc",
                         uid: window.playerid,
-                        state: data
+                        state: data,
+                        ts: Date.now(),
                     };
                 }
                 // console.log("send webrtc", message);
+                break;
+            case "test":
+                {
+                    message = {
+                        type: "test",
+                        state: Date.now()
+                    }
+                }
                 break;
             default:
                 break;

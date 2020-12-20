@@ -214,6 +214,7 @@ function initAudio(peerUuid) {
     });
 
     // listener: where I am
+    console.log("set listener pos", window.avatars[window.playerid].headset.position);
     window.peerConnections[peerUuid].audioContext.listener.setPosition(
         window.avatars[window.playerid].headset.position[0],
         window.avatars[window.playerid].headset.position[1],

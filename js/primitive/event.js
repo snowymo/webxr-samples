@@ -4,6 +4,10 @@ import { Headset, Controller, Avatar } from "./avatar.js"
 // import {setUpPeer} from '../util/voip-webrtc.js'
 
 export function init() {
+    window.EventBus.subscribe("test", (json) => {
+        console.log("receive from server [test]", json["state"], "at", Date.now());
+    });
+
     window.EventBus.subscribe("initialize", (json) => {
         if (!window.avatars) {
             window.avatars = {};
@@ -84,6 +88,9 @@ export function init() {
 
     window.EventBus.subscribe("leave", (json) => {
         console.log(json);
+        window.avatars[json["user"]].headset.model.visible = false;
+        window.avatars[json["user"]].leftController.model.visible = false;
+        window.avatars[json["user"]].rightController.model.visible = false;
         delete window.avatars[json["user"]];
 
         // window.updatePlayersMenu();
@@ -113,6 +120,9 @@ export function init() {
                 window.avatars[payload[key]["user"]].rightController.matrix = payload[key]["state"]["controllers"]["right"]["mtx"];
                 window.avatars[payload[key]["user"]].rightController.position = payload[key]["state"]["controllers"]["right"]["pos"];
                 window.avatars[payload[key]["user"]].rightController.orientation = payload[key]["state"]["controllers"]["right"]["rot"];
+                window.avatars[payload[key]["user"]].headset.model.visible = true;
+                window.avatars[payload[key]["user"]].leftController.model.visible = true;
+                window.avatars[payload[key]["user"]].rightController.model.visible = true;
                 // window.avatars[payload[key]["user"]].mode = payload[key]["state"]["mode"];
             } else {
                 // never seen, create
@@ -127,7 +137,7 @@ export function init() {
 
     window.EventBus.subscribe("webrtc", (json) => {
         var signal = json["state"];
-        // console.log("receive webrtc", signal);
+        console.log("receive webrtc", json["ts"], Date.now());
         // if (!signal.roomID)
         //     return;
 
@@ -164,30 +174,37 @@ export function init() {
 
         } else if (signal.sdp) {
             console.log("case 3: sdp");
-            if ("nego" in window.peerConnections[peerUuid]) {
-                console.log("already setRemoteDescription in window.peerConnections[" + peerUuid + "]");
-            } else {
-                console.log("setremotedescription");
-                window.peerConnections[peerUuid].nego = true;
-                window.peerConnections[peerUuid].pc.setRemoteDescription(new RTCSessionDescription(signal.sdp)).then(function () {
-                    // Only create answers in response to offers
-                    if (signal.sdp.type == 'offer') {
-                        window.peerConnections[peerUuid].pc.createAnswer().then(description => window.createdDescription(description, peerUuid)).catch(window.errorHandler);
-                    }
-                }).catch(window.errorHandler);
-                if("icecall" in window.peerConnections[peerUuid]){
-                    console.log("addIceCandidate");
-                    window.peerConnections[peerUuid].pc.addIceCandidate(new RTCIceCandidate(signal.ice)).catch(window.errorHandler);
+            window.peerConnections[peerUuid].pc.setRemoteDescription(new RTCSessionDescription(signal.sdp)).then(function () {
+                // Only create answers in response to offers
+                if (signal.sdp.type == 'offer') {
+                    window.peerConnections[peerUuid].pc.createAnswer().then(description => createdDescription(description, peerUuid)).catch(errorHandler);
                 }
-            }
+            }).catch(errorHandler);
 
+            // if ("nego" in window.peerConnections[peerUuid]) {
+            //     console.log("already setRemoteDescription in window.peerConnections[" + peerUuid + "]");
+            // } else {
+            //     console.log("setremotedescription");
+            //     window.peerConnections[peerUuid].nego = true;
+            //     window.peerConnections[peerUuid].pc.setRemoteDescription(new RTCSessionDescription(signal.sdp)).then(function () {
+            //         // Only create answers in response to offers
+            //         if (signal.sdp.type == 'offer') {
+            //             window.peerConnections[peerUuid].pc.createAnswer().then(description => window.createdDescription(description, peerUuid)).catch(window.errorHandler);
+            //         }
+            //     }).catch(window.errorHandler);
+            //     if("icecall" in window.peerConnections[peerUuid]){
+            //         console.log("addIceCandidate");
+            //         window.peerConnections[peerUuid].pc.addIceCandidate(new RTCIceCandidate(signal.ice)).catch(window.errorHandler);
+            //     }
+            // }
         } else if (signal.ice) {
             console.log("case 4: ice");
-            window.peerConnections[peerUuid].icecall = true;
-            if ("nego" in window.peerConnections[peerUuid]) {
-                // console.log("addIceCandidate");
-                window.peerConnections[peerUuid].pc.addIceCandidate(new RTCIceCandidate(signal.ice)).catch(window.errorHandler);
-            }
+            window.peerConnections[peerUuid].pc.addIceCandidate(new RTCIceCandidate(signal.ice)).catch(errorHandler);
+            // window.peerConnections[peerUuid].icecall = true;
+            // if ("nego" in window.peerConnections[peerUuid]) {
+            //     // console.log("addIceCandidate");
+            //     window.peerConnections[peerUuid].pc.addIceCandidate(new RTCIceCandidate(signal.ice)).catch(window.errorHandler);
+            // }
         }
     });
 

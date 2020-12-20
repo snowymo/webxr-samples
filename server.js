@@ -108,12 +108,12 @@ const wss =
     new WebSocketServer({ server: httpsServer });
 // console.log("wss:" + wss.options.host + "-" + wss.options.path + ":" + wss.options.port);
 
-let wsIndex = 0;
+let wsIndex = 100;
 let websocketMap = new Map();
 const datastore = new DataStore();
 let avatars = {};
 let timers = {};
-const AVATAR_RATE = 16;
+const AVATAR_RATE = 10;
 setInterval(() => {
     console.log("current connections:");
     console.log(Array.from(websocketMap.keys()));
@@ -241,13 +241,14 @@ wss.on('connection', function (ws, req) {
 
                     avatars[userid] = {
                         'user': userid,
-                        'state': state
+                        'state': state,
+                        "ts": Date.now(),
                     };
                     // console.log(avatars);
                     break;
                 }
             case "webrtc": {
-                console.log("receive ws msg:", json["type"]);
+                console.log("receive ws msg:", json["type"], json["ts"], Date.now());
                 // console.log(json["type"], avatars);
                 const key = json["uid"];
                 const state = json["state"];
@@ -258,6 +259,18 @@ wss.on('connection', function (ws, req) {
                     "id": ws.index,
                     "uid": key,
                     "state": state,
+                    "ts": Date.now(),
+                    "success": true
+                };
+                send("*", -1, response);
+                break;
+            }
+            case "test":{
+                console.log("receive test ", json["state"], "at",  Date.now());
+                const response = {
+                    "type": "test",
+                    "id": ws.index,
+                    "state": Date.now(),
                     "success": true
                 };
                 send("*", -1, response);
@@ -266,20 +279,6 @@ wss.on('connection', function (ws, req) {
             default:
                 break;
         }
-
-        timers["avatar"] = setInterval(() => {
-
-            if (Object.keys(avatars).length === 0) {
-                return;
-            }
-            // zhenyi
-            const response = {
-                "type": "avatar",
-                "data": avatars
-            };
-            // console.log("timers[avatar] ", avatars);
-            send("*", -1, response);
-        }, AVATAR_RATE);
     });
 
     ws.on('error', () => ws.terminate());
@@ -308,3 +307,18 @@ http.createServer(function (req, res) {
     res.writeHead(301, { "Location": "https://" + req.headers['host'] + req.url });
     res.end();
 }).listen(HTTP_PORT);
+
+timers["avatar"] = setInterval(() => {
+
+    if (Object.keys(avatars).length === 0) {
+        return;
+    }
+    // zhenyi
+    const response = {
+        "type": "avatar",
+        "data": avatars,
+        "ts": Date.now(),
+    };
+    // console.log("timers[avatar] ", avatars);
+    send("*", -1, response);
+}, AVATAR_RATE);
