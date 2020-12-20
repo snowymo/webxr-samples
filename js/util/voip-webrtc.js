@@ -54,7 +54,7 @@ window.webrtc_start = function () {
         audio: true,
     };
 
-    setUserMediaVariable();
+    // setUserMediaVariable();
 
     if (navigator.mediaDevices.getUserMedia) {
         navigator.mediaDevices.getUserMedia(constraints)

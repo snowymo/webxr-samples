@@ -10,7 +10,7 @@ export class Client {
     constructor(heartbeat = 30000) {
         this.heartbeatTick = heartbeat;
         this.ws = null;
-        this.subs = new evtPubSub();
+        // this.subs = new evtPubSub();
     }
 
     // TODO: verify this is working
@@ -80,12 +80,12 @@ export class Client {
                 // reset t, clean up later
                 // this.t = 0;
                 console.log('websocket is connected ...');
-                this.subs.publish('open', null);
-                if (this.ws.readyState == WebSocket.OPEN) {
-                    // create webrtc
-                    // window.voip = new VoIP_webrtc(window.wsclient);
-                } else {
-                }
+                // this.subs.publish('open', null);
+                // if (this.ws.readyState == WebSocket.OPEN) {
+                //     // create webrtc
+                //     // window.voip = new VoIP_webrtc(window.wsclient);
+                // } else {
+                // }
                 // ws.send('connected');
             };
 
