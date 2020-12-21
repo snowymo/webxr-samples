@@ -1,3 +1,4 @@
+import { initAvatar } from '../primitive/avatar.js';
 import { mat4, vec3, quat } from '../render/math/gl-matrix.js';
 
 // vars
@@ -174,6 +175,50 @@ function gotRemoteStream(event, peerUuid) {
     document.getElementById('audios').appendChild(vidContainer);
 }
 
+function updateAvatarAudio(peerUuid) {
+
+    if (initAudio(peerUuid)) {
+        // listener: where I am
+        console.log("set listener pos", window.avatars[window.playerid].headset.position);
+        var selfPos = window.avatars[window.playerid].headset.position;
+        var selfRotation = window.avatars[window.playerid].headset.orientation;
+        var selffwd = vec3.create();
+        var selfQuat = quat.create();
+        selfQuat.x = selfRotation.x;
+        selfQuat.y = selfRotation.y;
+        selfQuat.z = selfRotation.z;
+        selfQuat.w = selfRotation.w;
+        quat.getEuler(selffwd, selfQuat);
+        var audioListener = window.peerConnections[peerUuid].audioContext.listener;
+        if (audioListener) {
+            audioListener.positionX.value = selfPos[0] || 0;
+            audioListener.positionY.value = selfPos[1] || 0;
+            audioListener.positionZ.value = selfPos[2] || 0;
+            audioListener.forwardY.value = selffwd[1];
+        }
+
+        // panner: audio source
+        if (window.avatars[window.peerConnections[peerUuid].displayName].headset) {
+            var srcPos = vec3.create();
+            var srcOrientation = quat.create();
+            mat4.getTranslation(srcPos, window.avatars[window.peerConnections[peerUuid].displayName].headset.matrix);
+            mat4.getRotation(srcOrientation, window.avatars[window.peerConnections[peerUuid].displayName].headset.matrix);
+            var srcEuler = vec3.create();
+            quat.getEuler(srcEuler, srcOrientation);
+            let panner = window.peerConnections[peerUuid].panner;
+            if (panner) {
+                panner.positionX.value = srcPos[0];
+                panner.positionY.value = srcPos[1];
+                panner.positionZ.value = srcPos[2];
+                panner.orientationY.value = srcEuler[1];
+            }
+        }
+
+        console.log('src', selfPos, selffwd, 'des', srcPos, srcEuler[1]);
+    }
+}
+window.updateAvatarAudio = updateAvatarAudio;
+
 function playAvatarAudio(stream, peerUuid) {
     // 
     if (initAudio(peerUuid)) {
@@ -181,50 +226,7 @@ function playAvatarAudio(stream, peerUuid) {
         // shall we update listener here?
         // Create a MediaStreamAudioSourceNode
 
-        // listener: where I am
-        console.log("set listener pos", window.avatars[window.playerid].headset.position);
-        var selfPos = window.avatars[window.playerid].headset.position;
-        var selfRotation = window.avatars[window.playerid].headset.orientation;
-        var selffwd = vec3.create();
-        quat.getEuler(selffwd, selfRotation);
-        var audioListener = window.peerConnections[peerUuid].audioContext.listener;
-        audioListener.setPosition(
-            selfPos[0],
-            selfPos[1],
-            selfPos[2]);
-        audioListener.forwardY.value = selffwd[1];
-
-        // 0.1, 0, 0);
-        // that.audioContext.listener.orientationY(0);
-        // that.audioContext.listener.orientationZ(-1);
-
-        // panner: audio source
-        var srcPos = vec3.create();
-        var srcOrientation = quat.create();
-        mat4.getTranslation(srcPos, window.avatars[window.peerConnections[peerUuid].displayName].headset.matrix);
-        mat4.getRotation(srcOrientation, window.avatars[window.peerConnections[peerUuid].displayName].headset.matrix);
-        var srcEuler = vec3.create();
-        quat.getEuler(srcEuler, srcOrientation);
-        window.peerConnections[peerUuid].panner = new PannerNode(window.peerConnections[peerUuid].audioContext, {
-            // equalpower or HRTF
-            panningModel: 'HRTF',
-            // linear, inverse, exponential
-            distanceModel: 'linear',
-            positionX: srcPos[0],
-            positionY: srcPos[1],
-            positionZ: srcPos[2],
-            orientationX: 0.0,
-            orientationY: srcEuler[1],
-            orientationZ: 0.0,
-            refDistance: .1,
-            maxDistance: 10000,
-            rolloffFactor: 1.5,
-            coneInnerAngle: 360,
-            coneOuterAngle: 360,
-            coneOuterGain: 0.2
-        });
-
-        console.log('src', selfPos, selffwd, 'des', srcPos, srcEuler[1]);
+        updateAvatarAudio(peerUuid);
 
         var realAudioInput = new MediaStreamAudioSourceNode(window.peerConnections[peerUuid].audioContext, {
             mediaStream: stream
@@ -245,11 +247,17 @@ function initAudio(peerUuid) {
         return true;
     }
 
+    if ("leave" in window.avatars[window.peerConnections[peerUuid].displayName]) {
+        console.log(window.peerConnections[peerUuid].displayName, "already left");
+        return false;
+    }
+
     if (!(window.peerConnections[peerUuid].displayName in window.avatars)) {
         console.log("avatar[" + window.peerConnections[peerUuid].displayName + "] is not ready yet", window.avatars);
+        initAvatar(window.peerConnections[peerUuid].displayName);
 
-        setTimeout(initAudio(peerUuid), 1000);
-        return false;
+        // setTimeout(initAudio(peerUuid), 1000);
+        // return true;
     }
 
     console.log("avatar[" + window.peerConnections[peerUuid].displayName + "] now setting up");
@@ -257,6 +265,25 @@ function initAudio(peerUuid) {
     window.peerConnections[peerUuid].audioContext = new AudioContext({
         latencyHint: 'interactive',
         sampleRate: 44100,
+    });
+
+    window.peerConnections[peerUuid].panner = new PannerNode(window.peerConnections[peerUuid].audioContext, {
+        // equalpower or HRTF
+        panningModel: 'HRTF',
+        // linear, inverse, exponential
+        distanceModel: 'linear',
+        positionX: 0,
+        positionY: 0,
+        positionZ: 0,
+        orientationX: 0.0,
+        orientationY: 0,
+        orientationZ: 0.0,
+        refDistance: .1,
+        maxDistance: 10000,
+        rolloffFactor: 1.5,
+        coneInnerAngle: 360,
+        coneOuterAngle: 360,
+        coneOuterGain: 0.2
     });
 
     return true;

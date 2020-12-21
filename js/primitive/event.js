@@ -1,6 +1,6 @@
 'use strict';
 
-import { Headset, Controller, Avatar } from "./avatar.js"
+import { Headset, Controller, Avatar, initAvatar } from "./avatar.js"
 // import {setUpPeer} from '../util/voip-webrtc.js'
 
 export function init() {
@@ -68,18 +68,7 @@ export function init() {
         if (id in window.avatars) {
 
         } else {
-            let headset = new Headset();
-            let leftController = new Controller("left");
-            let rightController = new Controller("right");
-            // setup render nodes for new avatar
-            headset.model.name = "headset" + id;
-            window.scene.addNode(headset.model);
-            leftController.model.name = "LC" + id;
-            window.scene.addNode(leftController.model);
-            rightController.model.name = "RC" + id;
-            window.scene.addNode(rightController.model);
-            let avatar = new Avatar(headset, id, leftController, rightController);
-            window.avatars[id] = avatar;
+            initAvatar(id);
         }
         console.log("join window.avatars", window.avatars);
 
@@ -88,10 +77,14 @@ export function init() {
 
     window.EventBus.subscribe("leave", (json) => {
         console.log(json);
-        window.avatars[json["user"]].headset.model.visible = false;
-        window.avatars[json["user"]].leftController.model.visible = false;
-        window.avatars[json["user"]].rightController.model.visible = false;
-        delete window.avatars[json["user"]];
+        if (window.avatars[json["user"]]) {
+            window.avatars[json["user"]].headset.model.visible = false;
+            window.avatars[json["user"]].leftController.model.visible = false;
+            window.avatars[json["user"]].rightController.model.visible = false;
+            window.avatars[json["user"]].leave = true;
+            // delete window.avatars[json["user"]];
+            // TODO clean up when too many
+        }
 
         // window.updatePlayersMenu();
     });
@@ -128,6 +121,11 @@ export function init() {
                 // never seen, create
                 //ALEX: AVATARS WHO ARE ALSO IN BROWSER MODE GO HERE...
                 console.log("previously unseen user avatar", payload[key]["user"]);
+                if("leave" in  window.avatars[payload[key]["user"]]){
+                    console.log("left already");
+                }else{
+                    initAvatar(payload[key]["user"]);
+                }                
                 // let avatarCube = createCubeVertices();
                 // MR.avatars[payload[key]["user"]] = new Avatar(avatarCube, payload[key]["user"]);
             }
