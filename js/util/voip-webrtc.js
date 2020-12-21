@@ -180,6 +180,52 @@ function playAvatarAudio(stream, peerUuid) {
         // how many times this got called?
         // shall we update listener here?
         // Create a MediaStreamAudioSourceNode
+
+        // listener: where I am
+        console.log("set listener pos", window.avatars[window.playerid].headset.position);
+        var selfPos = window.avatars[window.playerid].headset.position;
+        var selfRotation = window.avatars[window.playerid].headset.orientation;
+        var selffwd = vec3.create();
+        quat.getEuler(selffwd, selfRotation);
+        var audioListener = window.peerConnections[peerUuid].audioContext.listener;
+        audioListener.setPosition(
+            selfPos[0],
+            selfPos[1],
+            selfPos[2]);
+        audioListener.forwardY.value = selffwd[1];
+
+        // 0.1, 0, 0);
+        // that.audioContext.listener.orientationY(0);
+        // that.audioContext.listener.orientationZ(-1);
+
+        // panner: audio source
+        var srcPos = vec3.create();
+        var srcOrientation = quat.create();
+        mat4.getTranslation(srcPos, window.avatars[window.peerConnections[peerUuid].displayName].headset.matrix);
+        mat4.getRotation(srcOrientation, window.avatars[window.peerConnections[peerUuid].displayName].headset.matrix);
+        var srcEuler = vec3.create();
+        quat.getEuler(srcEuler, srcOrientation);
+        window.peerConnections[peerUuid].panner = new PannerNode(window.peerConnections[peerUuid].audioContext, {
+            // equalpower or HRTF
+            panningModel: 'HRTF',
+            // linear, inverse, exponential
+            distanceModel: 'linear',
+            positionX: srcPos[0],
+            positionY: srcPos[1],
+            positionZ: srcPos[2],
+            orientationX: 0.0,
+            orientationY: srcEuler[1],
+            orientationZ: 0.0,
+            refDistance: .1,
+            maxDistance: 10000,
+            rolloffFactor: 1.5,
+            coneInnerAngle: 360,
+            coneOuterAngle: 360,
+            coneOuterGain: 0.2
+        });
+
+        console.log('src', selfPos, selffwd, 'des', srcPos, srcEuler[1]);
+
         var realAudioInput = new MediaStreamAudioSourceNode(window.peerConnections[peerUuid].audioContext, {
             mediaStream: stream
         });
@@ -213,51 +259,6 @@ function initAudio(peerUuid) {
         sampleRate: 44100,
     });
 
-    // listener: where I am
-    console.log("set listener pos", window.avatars[window.playerid].headset.position);
-    window.peerConnections[peerUuid].audioContext.listener.setPosition(
-        window.avatars[window.playerid].headset.position[0],
-        window.avatars[window.playerid].headset.position[1],
-        window.avatars[window.playerid].headset.position[2]);
-    var rotation = window.avatars[window.playerid].headset.orientation;
-    var fwd = vec3.create();
-    quat.getEuler(fwd, rotation);
-    window.peerConnections[peerUuid].audioContext.listener.forwardY.value = fwd[1];
-
-    console.log('src', window.avatars[window.playerid].headset.position, fwd,
-        'des', window.peerConnections[peerUuid].audioContext.listener.positionX, 
-        window.peerConnections[peerUuid].audioContext.listener.positionY,
-        window.peerConnections[peerUuid].audioContext.listener.positionZ,
-        window.peerConnections[peerUuid].audioContext.listener.forwardY);
-    // 0.1, 0, 0);
-    // that.audioContext.listener.orientationY(0);
-    // that.audioContext.listener.orientationZ(-1);
-
-    // panner: audio source
-    var pos = vec3.create();
-    var orientation = quat.create();
-    mat4.getTranslation(pos, window.avatars[window.peerConnections[peerUuid].displayName].headset.matrix);
-    mat4.getRotation(orientation, window.avatars[window.peerConnections[peerUuid].displayName].headset.matrix);
-    var euler = vec3.create();
-    quat.getEuler(euler, orientation);
-    window.peerConnections[peerUuid].panner = new PannerNode(window.peerConnections[peerUuid].audioContext, {
-        // equalpower or HRTF
-        panningModel: 'HRTF',
-        // linear, inverse, exponential
-        distanceModel: 'linear',
-        positionX: pos[0],
-        positionY: pos[1],
-        positionZ: pos[2],
-        orientationX: 0.0,
-        orientationY: euler[1],
-        orientationZ: 0.0,
-        refDistance: .1,
-        maxDistance: 10000,
-        rolloffFactor: 1.5,
-        coneInnerAngle: 360,
-        coneOuterAngle: 360,
-        coneOuterGain: 0.2
-    });
     return true;
 }
 
