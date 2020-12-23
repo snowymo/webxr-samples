@@ -120,10 +120,41 @@ setInterval(() => {
     console.log("avatars: ");
     // console.log(avatars);
     for (let id in avatars) {
-        console.log("id", id, "pos_x:", avatars[id]["state"]["mtx"]['12']);
+        var quat = avatars[id]["state"]["rot"];
+        var fwd = [0, 0, 0];
+        transformQuat(fwd, [0,0,-1], quat);
+        console.log("id", id, "pos:", avatars[id]["state"]["pos"], "fwd", fwd);
     }
 
 }, 5000);
+
+function transformQuat(out, vec, quat) {
+    var q = quat;
+    if (quat.x != undefined)
+        q = [quat.x, quat.y, quat.z, quat.w];
+    var a = vec;
+    if (vec.x != undefined)
+        a = [vec.x, vec.y, vec.z];
+    let qx = q[0], qy = q[1], qz = q[2], qw = q[3];
+    let x = a[0], y = a[1], z = a[2];
+    let uvx = qy * z - qz * y,
+        uvy = qz * x - qx * z,
+        uvz = qx * y - qy * x;
+    let uuvx = qy * uvz - qz * uvy,
+        uuvy = qz * uvx - qx * uvz,
+        uuvz = qx * uvy - qy * uvx;
+    let w2 = qw * 2;
+    uvx *= w2;
+    uvy *= w2;
+    uvz *= w2;
+    uuvx *= 2;
+    uuvy *= 2;
+    uuvz *= 2;
+    out[0] = x + uvx + uuvx;
+    out[1] = y + uvy + uuvy;
+    out[2] = z + uvz + uuvz;
+    return out;
+}
 
 function send(to, from, message) {
     if (to == "*") {
@@ -196,7 +227,7 @@ wss.on('connection', function (ws, req) {
             // console.log(err);
             return;
         }
-        
+
         switch (json["type"]) {
             case "object": {
                 console.log("receive ws msg:", json["type"]);
@@ -265,8 +296,8 @@ wss.on('connection', function (ws, req) {
                 send("*", -1, response);
                 break;
             }
-            case "test":{
-                console.log("receive test ", json["state"], "at",  Date.now());
+            case "test": {
+                console.log("receive test ", json["state"], "at", Date.now());
                 const response = {
                     "type": "test",
                     "id": ws.index,

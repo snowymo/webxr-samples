@@ -175,46 +175,72 @@ function gotRemoteStream(event, peerUuid) {
     document.getElementById('audios').appendChild(vidContainer);
 }
 
+function transformQuat(out, vec, quat) {
+    var q = quat;
+    if (quat.x != undefined)
+        q = [quat.x, quat.y, quat.z, quat.w];
+    var a = vec;
+    if (vec.x != undefined)
+        a = [vec.x, vec.y, vec.z];
+    let qx = q[0], qy = q[1], qz = q[2], qw = q[3];
+    let x = a[0], y = a[1], z = a[2];
+    let uvx = qy * z - qz * y,
+        uvy = qz * x - qx * z,
+        uvz = qx * y - qy * x;
+    let uuvx = qy * uvz - qz * uvy,
+        uuvy = qz * uvx - qx * uvz,
+        uuvz = qx * uvy - qy * uvx;
+    let w2 = qw * 2;
+    uvx *= w2;
+    uvy *= w2;
+    uvz *= w2;
+    uuvx *= 2;
+    uuvy *= 2;
+    uuvz *= 2;
+    out[0] = x + uvx + uuvx;
+    out[1] = y + uvy + uuvy;
+    out[2] = z + uvz + uuvz;
+    return out;
+}
+
 function updateAvatarAudio(peerUuid) {
 
     if (initAudio(peerUuid)) {
         // listener: where I am
-        console.log("set listener pos", window.avatars[window.playerid].headset.position);
+        // console.log("set listener pos", window.avatars[window.playerid].headset.position);
         var selfPos = window.avatars[window.playerid].headset.position;
         var selfRotation = window.avatars[window.playerid].headset.orientation;
-        var selffwd = vec3.create();
-        var selfQuat = quat.create();
-        selfQuat.x = selfRotation.x;
-        selfQuat.y = selfRotation.y;
-        selfQuat.z = selfRotation.z;
-        selfQuat.w = selfRotation.w;
-        quat.getEuler(selffwd, selfQuat);
+        var selffwd = [0, 0, 0];//vec3.create();
+        transformQuat(selffwd, [0,0,-1], selfRotation);
         var audioListener = window.peerConnections[peerUuid].audioContext.listener;
-        if (audioListener) {
-            audioListener.positionX.value = selfPos[0] || 0;
-            audioListener.positionY.value = selfPos[1] || 0;
-            audioListener.positionZ.value = selfPos[2] || 0;
-            audioListener.forwardY.value = selffwd[1];
+        if (audioListener && selfPos.x != undefined) {
+            window.peerConnections[peerUuid].audioContext.listener.positionX.value = selfPos.x;
+            window.peerConnections[peerUuid].audioContext.listener.positionY.value = selfPos.y;
+            window.peerConnections[peerUuid].audioContext.listener.positionZ.value = selfPos.z;
+            window.peerConnections[peerUuid].audioContext.listener.forwardX.value = selffwd[0];
+            window.peerConnections[peerUuid].audioContext.listener.forwardY.value = selffwd[1];//0;
+            window.peerConnections[peerUuid].audioContext.listener.forwardZ.value = selffwd[2];
         }
 
         // panner: audio source
         if (window.avatars[window.peerConnections[peerUuid].displayName].headset) {
-            var srcPos = vec3.create();
-            var srcOrientation = quat.create();
-            mat4.getTranslation(srcPos, window.avatars[window.peerConnections[peerUuid].displayName].headset.matrix);
-            mat4.getRotation(srcOrientation, window.avatars[window.peerConnections[peerUuid].displayName].headset.matrix);
-            var srcEuler = vec3.create();
-            quat.getEuler(srcEuler, srcOrientation);
+            var srcPos = window.avatars[window.peerConnections[peerUuid].displayName].headset.position;
+            var srcFWD = [0, 0, 0];//vec3.create();
+            // window.(srcEuler, window.avatars[window.peerConnections[peerUuid].displayName].headset.orientation);
+            transformQuat(srcFWD, [0,0,-1], selfRotation);
+            // quat.getEuler(srcEuler, srcOrientation);
             let panner = window.peerConnections[peerUuid].panner;
-            if (panner) {
-                panner.positionX.value = srcPos[0];
-                panner.positionY.value = srcPos[1];
-                panner.positionZ.value = srcPos[2];
-                panner.orientationY.value = srcEuler[1];
+            if (panner && srcPos.x != undefined) {
+                window.peerConnections[peerUuid].panner.positionX.value = srcPos.x;
+                window.peerConnections[peerUuid].panner.positionY.value = srcPos.y;
+                window.peerConnections[peerUuid].panner.positionZ.value = srcPos.z;
+                window.peerConnections[peerUuid].panner.orientationX.value = srcFWD[0];
+                window.peerConnections[peerUuid].panner.orientationY.value = srcFWD[1];
+                window.peerConnections[peerUuid].panner.orientationZ.value = srcFWD[2];
             }
         }
-
-        console.log('src', selfPos, selffwd, 'des', srcPos, srcEuler[1]);
+        // console.log('pos src', selfPos, 'des', srcPos);
+        // console.log('euler src', selffwd, 'des', srcFWD);
     }
 }
 window.updateAvatarAudio = updateAvatarAudio;
@@ -241,13 +267,50 @@ function playAvatarAudio(stream, peerUuid) {
     }
 }
 
+function testSpatialAudio() {
+    window.testAudioElement = document.getElementById('test');
+    window.testAudioElement.loop = true;
+    window.testAudioElement.play();
+    window.testAudioContext = new AudioContext();
+    window.testAudioContext.listener.positionY.value = 1.5;
+
+    // var realAudioInput = new MediaStreamAudioSourceNode(testAudioContext, {
+    //     mediaStream: audioSources[0].stream
+    // });
+    var track = window.testAudioContext.createMediaElementSource(window.testAudioElement);
+
+    window.testPanner = new PannerNode(window.testAudioContext, {
+        // equalpower or HRTF
+        panningModel: 'HRTF',
+        // linear, inverse, exponential
+        distanceModel: 'linear',
+        positionX: 0,
+        positionY: 1.5,
+        positionZ: 0,
+        orientationX: 0.0,
+        orientationY: 0,
+        orientationZ: 0.0,
+        refDistance: .1,
+        maxDistance: 10000,
+        rolloffFactor: 1.5,
+        coneInnerAngle: 360,
+        coneOuterAngle: 360,
+        coneOuterGain: 0.2
+    });
+    track.connect(window.testPanner);
+    window.testPanner.connect(window.testAudioContext.destination);
+}
+window.testSpatialAudio = testSpatialAudio;
+
 function initAudio(peerUuid) {
     if (window.peerConnections[peerUuid].audioContext != null) {
         console.log("avatar[" + window.peerConnections[peerUuid].displayName + "] already setup");
         return true;
     }
 
-    if ("leave" in window.avatars[window.peerConnections[peerUuid].displayName]) {
+    if (window.peerConnections[peerUuid]
+        && window.avatars[window.peerConnections[peerUuid]]
+        && "leave" in window.avatars[window.peerConnections[peerUuid].displayName]) {
         console.log(window.peerConnections[peerUuid].displayName, "already left");
         return false;
     }
@@ -262,10 +325,7 @@ function initAudio(peerUuid) {
 
     console.log("avatar[" + window.peerConnections[peerUuid].displayName + "] now setting up");
 
-    window.peerConnections[peerUuid].audioContext = new AudioContext({
-        latencyHint: 'interactive',
-        sampleRate: 44100,
-    });
+    window.peerConnections[peerUuid].audioContext = new AudioContext();
 
     window.peerConnections[peerUuid].panner = new PannerNode(window.peerConnections[peerUuid].audioContext, {
         // equalpower or HRTF
@@ -302,13 +362,3 @@ function errorHandler(error) {
     console.log(error);
 }
 window.errorHandler = errorHandler;
-
-// Taken from http://stackoverflow.com/a/105074/515584
-// Strictly speaking, it's not a real UUID, but it gets the job done here
-function createUUID() {
-    function s4() {
-        return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
-    }
-
-    return s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4();
-}

@@ -284,7 +284,7 @@ function onXRFrame(t, frame) {
     // possible to select multiple audio sources and drag them at the same
     // time (one per controller that has the trigger held down).    
 
-    for(let peerUuid in window.peerConnections){
+    for (let peerUuid in window.peerConnections) {
         window.updateAvatarAudio(peerUuid);
     }
 
